@@ -65,7 +65,7 @@ def crypto_backtest_readiness(
         filter_error = str(exc)
     fee_explicit = fee_configuration is not None
     spread_explicit = costs is not None and costs.spread_bps is not None
-    slippage_explicit = costs is not None and costs.slippage_per_unit is not None
+    slippage_explicit = costs is not None and costs.slippage_bps is not None
     fee_currency_supported = bool(
         fee_configuration
         and fee_configuration.fee_currency == instrument.quote_currency
@@ -114,3 +114,14 @@ def crypto_backtest_readiness(
         "realistic_net_performance_label_allowed": ready and fee_status == "COST_COMPLETE",
         "historical_backtest_executed": False,
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the deterministic BTCUSDT research readiness command."""
+    from tradingagents.intraday.crypto_research_readiness import main as research_main
+
+    return research_main(argv)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

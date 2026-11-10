@@ -71,15 +71,14 @@ disabled for crypto.
 
 ## Remaining blockers
 
-- No authoritative current Binance BTCUSDT symbol-filter snapshot is present in
-  the retained historical dataset manifest. Do not execute until tick size,
-  quantity step, minimum quantity, minimum notional, precision, source, and
-  retrieval timestamp are supplied.
-- No account-specific commission rate or user-configured fee assumption is
-  available; cost-sensitive simulations must remain `COST_INCOMPLETE` or fail
-  closed.
-- The isolated crypto ledger and Nautilus CASH data-delivery path are not yet
-  connected by a strategy-to-order worker. This phase does not run a strategy
-  backtest.
+- A retained Binance BTCUSDT filter snapshot is available, but is current-only;
+  it does not establish January 2025 exchange rules. The research readiness
+  gate verifies its raw SHA-256 and retrieval timestamp.
+- Account capital, risk limits, fees, spread, and slippage remain unset in the
+  research profile until supplied. Explicit research assumptions remain labeled
+  as assumptions and do not claim actual Binance account rates.
+- `run_crypto_experiment(...)` connects the strategy candidate pipeline to the
+  isolated Nautilus CASH worker. Historical execution remains gated on verified
+  dataset, configuration, and readiness inputs; Phase 4D.3 does not run it.
 - The Binance source dataset is local and governed by its noncommercial license;
   do not commit or redistribute it.

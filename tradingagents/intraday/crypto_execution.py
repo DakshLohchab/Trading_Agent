@@ -13,6 +13,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from tradingagents.intraday.candidates import TradeCandidate
+from tradingagents.intraday.crypto_costs import CryptoExecutionCostModel, quote_fee
 from tradingagents.intraday.crypto_exchange import BinanceSpotFilters
 from tradingagents.intraday.models import InstrumentMetadata
 
@@ -135,18 +136,18 @@ class CryptoSpotFeeConfiguration:
 @dataclass(frozen=True, slots=True)
 class CryptoSpotCostAssumptions:
     fee_model: CryptoSpotFeeModel | None
-    slippage_per_unit: Decimal | None
+    slippage_bps: Decimal | None
     spread_bps: Decimal | None
     source: str | None
     inputs_verified: bool
     version: str
 
     def __post_init__(self) -> None:
-        if self.slippage_per_unit is not None:
-            slip = D(str(self.slippage_per_unit))
+        if self.slippage_bps is not None:
+            slip = D(str(self.slippage_bps))
             if not slip.is_finite() or slip < 0:
-                raise CryptoRiskError("slippage per unit must be finite and non-negative")
-            object.__setattr__(self, "slippage_per_unit", slip)
+                raise CryptoRiskError("slippage bps must be finite and non-negative")
+            object.__setattr__(self, "slippage_bps", slip)
         if self.spread_bps is not None:
             spread = D(str(self.spread_bps))
             if not spread.is_finite() or spread < 0:
@@ -157,7 +158,7 @@ class CryptoSpotCostAssumptions:
 
     @property
     def available(self) -> bool:
-        return self.fee_model is not None and self.slippage_per_unit is not None and self.spread_bps is not None
+        return self.fee_model is not None and self.slippage_bps is not None and self.spread_bps is not None
 
     @property
     def cost_status(self) -> str:
@@ -182,6 +183,10 @@ class CryptoSpotAccountConfig:
     risk_period_minutes: int
     risk_period_timezone: str
     max_market_data_age_minutes: int
+    long_only: bool = True
+    leverage_enabled: bool = False
+    borrowing_enabled: bool = False
+    short_selling_enabled: bool = False
 
     def __post_init__(self) -> None:
         if not self.account_id.strip() or not self.account_currency.strip():
@@ -203,6 +208,8 @@ class CryptoSpotAccountConfig:
             raise CryptoRiskError("position, trade, and risk-period limits must be positive")
         if not self.risk_period_timezone.strip():
             raise CryptoRiskError("risk-period timezone is required")
+        if not self.long_only or self.leverage_enabled or self.borrowing_enabled or self.short_selling_enabled:
+            raise CryptoRiskError("crypto research account must be long-only, unleveraged, and cash-only")
         if self.risk_period_minutes > 1440:
             raise CryptoRiskError("crypto risk periods cannot exceed one day")
         try:
@@ -239,6 +246,19 @@ class CryptoRiskDecision:
     quantity: Decimal | None
     modeled_loss_quote: Decimal | None
     cost_status: str
+    cost_breakdown: CryptoRiskCostBreakdown | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CryptoRiskCostBreakdown:
+    reference_entry_price: Decimal
+    adjusted_expected_entry_price: Decimal
+    expected_exit_reference_price: Decimal
+    adjusted_expected_exit_price: Decimal
+    estimated_entry_fee: Decimal
+    estimated_exit_fee: Decimal
+    gross_modeled_loss: Decimal
+    estimated_total_loss_after_costs: Decimal
 
 
 @dataclass(frozen=True, slots=True)
@@ -319,15 +339,18 @@ def approve_crypto_candidate(
     tick = instrument.tick_size
     if candidate.entry_trigger_price % tick or candidate.stop_price % tick:
         return reject("price_tick_violation")
-    slip = costs.slippage_per_unit
-    spread_half = candidate.entry_trigger_price * costs.spread_bps / D(20000)
-    entry = candidate.entry_trigger_price + slip + spread_half
-    exit_price = candidate.stop_price - slip - candidate.stop_price * costs.spread_bps / D(20000)
+    cost_model = CryptoExecutionCostModel(costs.spread_bps, costs.slippage_bps)
+    try:
+        entry = cost_model.adjusted_price(candidate.entry_trigger_price, "BUY", tick)
+        exit_price = cost_model.adjusted_price(candidate.stop_price, "SELL", tick)
+    except ValueError:
+        return reject("invalid_execution_cost_adjustment")
     if entry <= 0 or exit_price <= 0 or exit_price >= entry:
         return reject("invalid_conservative_stop")
-    entry_fee_per_unit = entry * fee_rate
-    exit_fee_per_unit = exit_price * fee_rate
-    loss_per_unit = entry - exit_price + entry_fee_per_unit + exit_fee_per_unit
+    entry_fee_per_unit = quote_fee(entry, fee_rate)
+    exit_fee_per_unit = quote_fee(exit_price, fee_rate)
+    gross_loss_per_unit = entry - exit_price
+    loss_per_unit = gross_loss_per_unit + entry_fee_per_unit + exit_fee_per_unit
     if loss_per_unit <= 0:
         return reject("invalid_unit_risk")
     risk_budget = min(account.max_risk_per_trade, account.max_daily_loss + period_pnl)
@@ -358,7 +381,17 @@ def approve_crypto_candidate(
     modeled_loss = quantity * loss_per_unit
     if modeled_loss > account.max_risk_per_trade or modeled_loss > account.max_daily_loss + period_pnl:
         return reject("modeled_loss_exceeds_risk_limit")
-    return CryptoRiskDecision(True, "approved", quantity, modeled_loss, costs.cost_status)
+    breakdown = CryptoRiskCostBreakdown(
+        reference_entry_price=candidate.entry_trigger_price,
+        adjusted_expected_entry_price=entry,
+        expected_exit_reference_price=candidate.stop_price,
+        adjusted_expected_exit_price=exit_price,
+        estimated_entry_fee=quote_fee(quantity * entry, fee_rate),
+        estimated_exit_fee=quote_fee(quantity * exit_price, fee_rate),
+        gross_modeled_loss=quantity * gross_loss_per_unit,
+        estimated_total_loss_after_costs=modeled_loss,
+    )
+    return CryptoRiskDecision(True, "approved", quantity, modeled_loss, costs.cost_status, breakdown)
 
 
 @dataclass(slots=True)

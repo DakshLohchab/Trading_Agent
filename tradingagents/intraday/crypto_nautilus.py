@@ -92,7 +92,10 @@ def run_crypto_nautilus_execution(
             raise ValueError("candidate is missing its 15-minute confirmation availability timestamp")
         if datetime.fromisoformat(confirmation) > candidate.decision_timestamp:
             raise ValueError("candidate contains a future 15-minute confirmation")
-        vwap_method = snapshot.get("5m.reclaim.vwap.method", snapshot.get("vwap_method"))
+        vwap_method = snapshot.get(
+            "5m.reclaim.vwap_method",
+            snapshot.get("5m.reclaim.vwap.method", snapshot.get("vwap_method")),
+        )
         if vwap_method != "ohlcv_typical_price_approximation":
             raise ValueError("candidate must identify OHLCV-approximate VWAP semantics")
         if snapshot.get("strategy_config.crypto_session_anchor_utc") != "00:00:00":
@@ -126,7 +129,7 @@ def run_crypto_nautilus_execution(
             "version": fee_configuration.version,
         },
         "costs": {
-            "slippage_per_unit": str(costs.slippage_per_unit),
+            "slippage_bps": str(costs.slippage_bps),
             "spread_bps": str(costs.spread_bps),
             "source": costs.source,
             "inputs_verified": costs.inputs_verified,
@@ -167,7 +170,7 @@ def run_crypto_nautilus_execution(
     output["fill_limitations"] = [
         "OHLCV only: no historical order book, observed spread, queue position, or market depth.",
         "OHLCV does not preserve intraminute trade order; when stop and target are both touched, stop wins.",
-        "Spread and slippage inputs reduce risk sizing; the OHLCV fill does not claim order-book realism.",
+        "Configured spread and slippage adjust fills from Nautilus execution-event references; historical book depth is unavailable.",
     ]
     return output
 
@@ -200,12 +203,14 @@ def _worker(payload: dict) -> dict:
     from nautilus_trader.backtest.config import BacktestEngineConfig
     from nautilus_trader.backtest.engine import BacktestEngine
     from nautilus_trader.backtest.models import FillModel, MakerTakerFeeModel
+    from nautilus_trader.model.book import OrderBook
     from nautilus_trader.model.currencies import Currency
-    from nautilus_trader.model.data import Bar, BarSpecification, BarType
+    from nautilus_trader.model.data import Bar, BarSpecification, BarType, BookOrder
     from nautilus_trader.model.enums import (
         AccountType,
         AggregationSource,
         BarAggregation,
+        BookType,
         OmsType,
         OrderSide,
         PriceType,
@@ -218,6 +223,7 @@ def _worker(payload: dict) -> dict:
     from nautilus_trader.trading.strategy import Strategy
 
     from tradingagents.intraday.candidates import CandidateStatus, TradeCandidate
+    from tradingagents.intraday.crypto_costs import CryptoExecutionCostModel
     from tradingagents.intraday.crypto_exchange import BinanceSpotFilters
     from tradingagents.intraday.crypto_execution import (
         CryptoMarketDataState,
@@ -265,7 +271,7 @@ def _worker(payload: dict) -> dict:
     costs_raw = payload["costs"]
     spot_fee_model = fee_config.taker_model()
     costs = CryptoSpotCostAssumptions(
-        spot_fee_model, D(costs_raw["slippage_per_unit"]), D(costs_raw["spread_bps"]),
+        spot_fee_model, D(costs_raw["slippage_bps"]), D(costs_raw["spread_bps"]),
         costs_raw["source"], costs_raw["inputs_verified"], costs_raw["version"],
     )
     spec = CryptoSpotExecutionSpec(
@@ -308,13 +314,18 @@ def _worker(payload: dict) -> dict:
     # The Binance LOT_SIZE step is 1e-5, so quantities and unused bar-volume
     # liquidity fields are projected to five decimals inside the simulator.
     qty_precision = max(0, -instrument.quantity_increment.normalize().as_tuple().exponent)
+    size_increment = Quantity.from_str(f"{instrument.quantity_increment:.{qty_precision}f}")
+    minimum_quantity = Quantity.from_str(f"{filters.lot_min_quantity:.{qty_precision}f}")
+    maximum_quantity = filters.market_max_quantity.quantize(
+        instrument.quantity_increment, rounding=ROUND_DOWN
+    )
     venue_instrument = CurrencyPair(
         instrument_id, Symbol(instrument.symbol), base_currency, quote_currency,
         instrument.price_precision, qty_precision,
         Price.from_str(str(instrument.tick_size)),
-        Quantity.from_str(str(instrument.quantity_increment)), 0, 0,
-        min_quantity=Quantity.from_str(str(filters.lot_min_quantity)),
-        max_quantity=Quantity.from_str(str(filters.market_max_quantity)),
+        size_increment, 0, 0,
+        min_quantity=minimum_quantity,
+        max_quantity=Quantity.from_str(f"{maximum_quantity:.{qty_precision}f}"),
         min_notional=Money(filters.min_notional, quote_currency),
         max_notional=Money(filters.max_notional, quote_currency) if filters.max_notional else None,
         min_price=Price.from_str(f"{filters.min_price:.{instrument.price_precision}f}"),
@@ -348,8 +359,46 @@ def _worker(payload: dict) -> dict:
             if len(price_window) == filters.percent_price_avg_minutes:
                 filter_reference_by_end[item.end_timestamp] = sum(price_window, D(0)) / D(len(price_window))
     events, fills, rejections = [], [], []
+    execution_references = {}
     ledger = CryptoSpotAccountLedger(spec, account)
     nautilus_fee_model = MakerTakerFeeModel()
+
+    class CryptoCostFillModel(FillModel):
+        """Apply configured costs to Nautilus's current execution-event price."""
+
+        def __init__(self):
+            # Do not activate the separate probabilistic one-tick slippage path.
+            super().__init__(prob_fill_on_limit=1.0, prob_slippage=0.0, random_seed=0)
+            self.cost_model = CryptoExecutionCostModel(costs.spread_bps, costs.slippage_bps)
+
+        def get_orderbook_for_fill_simulation(self, fill_instrument, order, best_bid, best_ask):
+            reference = best_ask if order.is_buy else best_bid
+            if reference is None:
+                reference = best_bid if order.is_buy else best_ask
+            if reference is None:
+                raise RuntimeError("Nautilus supplied no execution-event reference price")
+            side = "BUY" if order.is_buy else "SELL"
+            adjusted = self.cost_model.adjusted_price(
+                reference.as_decimal(), side, fill_instrument.price_increment.as_decimal()
+            )
+            execution_references[str(order.client_order_id)] = {
+                "reference_price": str(reference.as_decimal()),
+                "adjusted_price": str(adjusted),
+                "cost_model_version": self.cost_model.version,
+            }
+            book = OrderBook(fill_instrument.id, BookType.L2_MBP)
+            liquidity_side = OrderSide.SELL if order.is_buy else OrderSide.BUY
+            book.add(
+                BookOrder(
+                    liquidity_side,
+                    Price.from_str(f"{adjusted:.{fill_instrument.price_precision}f}"),
+                    Quantity.from_str(str(order.quantity)),
+                    1,
+                ),
+                0,
+            )
+            return book
+
     engine = BacktestEngine(BacktestEngineConfig(run_analysis=False))
     initial_quote = account.starting_quote_balance
     initial_base = account.starting_base_balance
@@ -408,6 +457,7 @@ def _worker(payload: dict) -> dict:
             candidate_id = item.get("candidate_id")
             side = "BUY" if event.is_buy else "SELL"
             fee_currency = str(event.commission.currency)
+            liquidity_class = getattr(event.liquidity_side, "name", str(event.liquidity_side)).upper()
             fill = ledger.project_nautilus_fill(
                 str(event.client_order_id), side, event.last_qty.as_decimal(),
                 event.last_px.as_decimal(), event.commission.as_decimal(), fee_currency,
@@ -416,6 +466,9 @@ def _worker(payload: dict) -> dict:
             fill_record = {"order_id": fill.order_id, "candidate_id": candidate_id, "role": item.get("role"),
                            "side": side, "timestamp": fill.timestamp.isoformat(), "quantity": str(fill.quantity),
                            "price": str(fill.price), "fee": str(fill.fee_amount), "fee_currency": fee_currency,
+                           "liquidity_side": liquidity_class,
+                           "fee_classification": liquidity_class,
+                           **execution_references.get(str(event.client_order_id), {}),
                            "realized_pnl_quote": str(fill.realized_pnl_quote)}
             fills.append(fill_record)
             self._emit("fill", event.ts_event, candidate_id, str(event.client_order_id), side=side,
@@ -539,6 +592,8 @@ def _worker(payload: dict) -> dict:
                 quote_free = self.portfolio.account(venue).balance_free(quote_currency)
                 if quote_free is None:
                     rejections.append({"candidate_id": candidate.candidate_id, "reason": "quote_balance_unavailable"})
+                    self._emit("risk_rejected", bar.ts_event, candidate.candidate_id,
+                               reason="quote_balance_unavailable")
                     continue
                 period = account.risk_period_key(timestamp)
                 mark = D(str(bar.close.as_decimal()))
@@ -564,12 +619,13 @@ def _worker(payload: dict) -> dict:
                 trades_in_period[period] = trades_in_period.get(period, 0) + 1
                 self._emit("risk_approved", bar.ts_event, candidate.candidate_id,
                            quantity=str(decision.quantity), modeled_loss_quote=str(decision.modeled_loss_quote),
-                           cost_status=decision.cost_status)
+                           cost_status=decision.cost_status,
+                           cost_breakdown={key: str(value) for key, value in asdict(decision.cost_breakdown).items()})
 
     engine.add_venue(
         venue, OmsType.NETTING, AccountType.CASH,
         [Money(initial_quote, quote_currency), Money(initial_base, base_currency)],
-        base_currency=None, fill_model=FillModel(prob_fill_on_limit=1.0, prob_slippage=1.0, random_seed=0),
+        base_currency=None, fill_model=CryptoCostFillModel(),
         fee_model=nautilus_fee_model, liquidity_consumption=False, bar_execution=True,
         bar_adaptive_high_low_ordering=False, allow_cash_borrowing=False,
         reject_stop_orders=False,
@@ -600,6 +656,7 @@ def _worker(payload: dict) -> dict:
     projected = ledger.snapshot(mark_price=candles[-1].close)
     projected_total = projected["balances"]
     errors = []
+    pnl_tolerance = D("0.0000001")
     for currency in (instrument.base_currency, instrument.quote_currency):
         if D(total.get(currency, "0")) != D(projected_total[currency]):
             errors.append(f"{currency} total balance mismatch")
@@ -640,14 +697,27 @@ def _worker(payload: dict) -> dict:
     event_realized = sum((D(item["realized_pnl_quote"]) for item in fills), D(0))
     if event_realized != D(projected["realized_pnl_quote"]):
         errors.append("realized P&L differs from Nautilus fill-event projection")
-    if nautilus_realized is None:
-        errors.append("Nautilus realized P&L is unavailable")
-    elif D(str(nautilus_realized.as_decimal())) != D(projected["realized_pnl_quote"]):
-        errors.append("realized P&L differs from Nautilus portfolio")
+    projected_total_pnl = D(projected["realized_pnl_quote"]) + D(
+        projected["unrealized_pnl_quote"]
+    )
+    nautilus_account_pnl = (
+        D(total.get(instrument.quote_currency, "0"))
+        - initial_quote
+        + D(total.get(instrument.base_currency, "0")) * D(str(candles[-1].close))
+        - (account.starting_base_cost_basis_quote or D(0))
+    )
+    if abs(nautilus_account_pnl - projected_total_pnl) > pnl_tolerance:
+        errors.append(
+            "account equity P&L differs from the crypto projection: "
+            f"{nautilus_account_pnl} != {projected_total_pnl}"
+        )
     if nautilus_unrealized is None:
         errors.append("Nautilus unrealized P&L is unavailable")
-    elif D(str(nautilus_unrealized.as_decimal())) != D(projected["unrealized_pnl_quote"]):
-        errors.append("unrealized P&L differs from Nautilus portfolio")
+    elif abs(D(str(nautilus_unrealized.as_decimal())) - D(projected["unrealized_pnl_quote"])) > pnl_tolerance:
+        errors.append(
+            "unrealized P&L differs from Nautilus portfolio: "
+            f"{nautilus_unrealized.as_decimal()} != {projected['unrealized_pnl_quote']}"
+        )
     if (
         account.starting_base_balance == 0
         and D(str(position_quantity)) != D(projected_total[instrument.base_currency])
@@ -658,7 +728,12 @@ def _worker(payload: dict) -> dict:
     return {
         "run_id": payload["run_id"], "nautilus_version": actual_version,
         "instrument_id": instrument.instrument_id, "account_type": "CASH",
-        "account_currency": account.account_currency, "events": events, "fills": fills,
+        "account_currency": account.account_currency,
+        "long_only": True,
+        "leverage_enabled": False,
+        "borrowing_enabled": False,
+        "short_selling_enabled": False,
+        "events": events, "fills": fills,
         "rejections": rejections, "nautilus_balances_total": total,
         "nautilus_balances_free": free, "nautilus_balances_locked": locked,
         "projected_account": projected,
@@ -677,11 +752,18 @@ def _worker(payload: dict) -> dict:
             "nautilus_realized_pnl_quote": (
                 str(nautilus_realized.as_decimal()) if nautilus_realized is not None else None
             ),
+            "nautilus_account_pnl_quote": str(nautilus_account_pnl),
+            "account_pnl_delta_quote": str(nautilus_account_pnl - projected_total_pnl),
             "unrealized_pnl_quote_at_final_bar": projected["unrealized_pnl_quote"],
             "nautilus_unrealized_pnl_quote_at_final_bar": (
                 str(nautilus_unrealized.as_decimal())
                 if nautilus_unrealized is not None else None
             ),
+            "unrealized_pnl_delta_quote": (
+                str(D(str(nautilus_unrealized.as_decimal())) - D(projected["unrealized_pnl_quote"]))
+                if nautilus_unrealized is not None else None
+            ),
+            "pnl_tolerance_quote": str(pnl_tolerance),
             "average_fill_price_by_side": average_fill_prices,
         },
         "open_position_base_quantity": str(position_quantity),

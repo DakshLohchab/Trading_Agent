@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal as D
+from decimal import ROUND_HALF_EVEN, Decimal as D
 from pathlib import Path
 
 import pytest
 
 from tradingagents.intraday.candidates import CandidateStatus, TradeCandidate
+from tradingagents.intraday.crypto_costs import CryptoExecutionCostModel
 from tradingagents.intraday.crypto_exchange import parse_binance_spot_exchange_info
 from tradingagents.intraday.crypto_execution import (
     CryptoSpotAccountConfig,
@@ -119,6 +120,19 @@ def test_valid_candidate_is_risk_approved_filled_and_reconciled_by_nautilus():
     assert [fill["side"] for fill in result["fills"]] == ["BUY", "SELL"], result
     assert all(fill["candidate_id"] == "candidate-synthetic-001" for fill in result["fills"])
     assert all(datetime.fromisoformat(fill["timestamp"]) > NOW for fill in result["fills"])
+    cost_model = CryptoExecutionCostModel(costs.spread_bps, costs.slippage_bps)
+    for fill in result["fills"]:
+        assert fill["adjusted_price"] == fill["price"]
+        assert D(fill["price"]) == cost_model.adjusted_price(
+            D(fill["reference_price"]), fill["side"], instrument.tick_size
+        )
+        assert fill["cost_model_version"] == "crypto-bps-cost-model-v1"
+        assert fill["fee_classification"] == "TAKER"
+        assert fill["liquidity_side"] == "TAKER"
+        expected_fee = (D(fill["quantity"]) * D(fill["price"]) * fees.taker_rate).quantize(
+            D("0.00000001"), rounding=ROUND_HALF_EVEN
+        )
+        assert D(fill["fee"]) == expected_fee
     assert result["nautilus_balances_locked"] == {"USDT": "0", "BTC": "0"}
     assert result["projected_account"]["reserved_balances"] == {"BTC": "0", "USDT": "0"}
     assert result["cost_status"] == "COST_INCOMPLETE"

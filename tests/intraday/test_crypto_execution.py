@@ -8,6 +8,7 @@ from decimal import Decimal as D
 import pytest
 
 from tradingagents.intraday.candidates import CandidateStatus, TradeCandidate
+from tradingagents.intraday.crypto_costs import CryptoExecutionCostModel
 from tradingagents.intraday.crypto_execution import (
     CryptoMarketDataState,
     CryptoRiskError,
@@ -184,6 +185,17 @@ def test_crypto_risk_gate_checks_cost_fx_freshness_and_period_limits():
     )
     assert decision.approved and decision.quantity % inst.quantity_increment == 0
     assert decision.cost_status == "COST_INCOMPLETE"
+    breakdown = decision.cost_breakdown
+    shared_model = CryptoExecutionCostModel(costs(model).spread_bps, costs(model).slippage_bps)
+    assert breakdown.reference_entry_price == candidate_item.entry_trigger_price
+    assert breakdown.adjusted_expected_entry_price == shared_model.adjusted_price(
+        candidate_item.entry_trigger_price, "BUY", inst.tick_size
+    )
+    assert breakdown.adjusted_expected_exit_price == shared_model.adjusted_price(
+        candidate_item.stop_price, "SELL", inst.tick_size
+    )
+    assert breakdown.estimated_total_loss_after_costs == decision.modeled_loss_quote
+    assert breakdown.estimated_entry_fee == decision.quantity * breakdown.adjusted_expected_entry_price * model.fee_rate
     missing_fee = approve_crypto_candidate(
         candidate_item, spec(inst), cfg, available_quote_balance=D("1000"), fee_model=None,
         costs=None, market_data=data, now=NOW, realized_pnl_this_period=D(0),

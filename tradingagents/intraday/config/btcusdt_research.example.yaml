@@ -1,0 +1,28 @@
+schema_version: btcusdt-research-v1
+account:
+  account_id: btc-usdt-research
+  account_currency: USDT
+  starting_capital: null
+  max_risk_per_trade: null
+  max_daily_loss: null
+  max_concurrent_positions: null
+  max_trades_per_utc_day: null
+  long_only: true
+  leverage_enabled: false
+  borrowing_enabled: false
+  short_selling_enabled: false
+fees:
+  maker_fee_bps: null
+  taker_fee_bps: null
+  fee_currency: USDT
+  source: null
+  configured_at: null
+  classification: null # ACTUAL_ACCOUNT_RATE or RESEARCH_ASSUMPTION
+spread:
+  full_bid_ask_bps: null
+  source: null
+  classification: null # OBSERVED or RESEARCH_ASSUMPTION
+slippage:
+  additional_adverse_bps: null
+  source: null
+  classification: null # OBSERVED or RESEARCH_ASSUMPTION

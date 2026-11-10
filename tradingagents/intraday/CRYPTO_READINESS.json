@@ -1,91 +1,331 @@
 {
-  "account_capital_status": "missing",
-  "checks": {
-    "crypto_account_capital_configured": false,
-    "current_instrument_filters_available": true,
-    "dataset_verified": true,
-    "fee_configuration_explicit": false,
-    "ledger_reconciliation_passed": true,
-    "nautilus_integration_validated": true,
-    "risk_configuration_valid": false,
-    "slippage_configuration_explicit": false,
-    "spread_configuration_explicit": false
+  "blockers": [
+    {
+      "category": "configuration",
+      "code": "ACCOUNT_CAPITAL_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "RISK_PER_TRADE_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "DAILY_LOSS_LIMIT_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "MAKER_FEE_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "TAKER_FEE_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "SPREAD_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "SLIPPAGE_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "FEE_PROVENANCE_INCOMPLETE",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "SPREAD_PROVENANCE_INCOMPLETE",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "SLIPPAGE_PROVENANCE_INCOMPLETE",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "CONCURRENT_POSITION_LIMIT_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "UTC_DAY_TRADE_LIMIT_UNCONFIGURED",
+      "detail": "required research input is unset or unsupported"
+    },
+    {
+      "category": "configuration",
+      "code": "EXECUTION_COST_MODEL_INCOMPLETE",
+      "detail": "taker fee, spread, and slippage must all be explicitly configured"
+    },
+    {
+      "category": "data",
+      "code": "DATASET_MANIFEST_MISSING",
+      "detail": "manifest is missing or invalid JSON"
+    },
+    {
+      "category": "configuration",
+      "code": "HISTORICAL_FILTER_COMPATIBILITY_UNVERIFIED",
+      "detail": "retained Binance filters are current-only and do not establish January 2025 rules"
+    }
+  ],
+  "configuration_blockers": [
+    "ACCOUNT_CAPITAL_UNCONFIGURED",
+    "RISK_PER_TRADE_UNCONFIGURED",
+    "DAILY_LOSS_LIMIT_UNCONFIGURED",
+    "MAKER_FEE_UNCONFIGURED",
+    "TAKER_FEE_UNCONFIGURED",
+    "SPREAD_UNCONFIGURED",
+    "SLIPPAGE_UNCONFIGURED",
+    "FEE_PROVENANCE_INCOMPLETE",
+    "SPREAD_PROVENANCE_INCOMPLETE",
+    "SLIPPAGE_PROVENANCE_INCOMPLETE",
+    "CONCURRENT_POSITION_LIMIT_UNCONFIGURED",
+    "UTC_DAY_TRADE_LIMIT_UNCONFIGURED"
+  ],
+  "configuration_hash_behavior": "canonical sorted JSON; Decimal values encoded as strings",
+  "configuration_snapshot": {
+    "account_and_cost_profile": {
+      "account_currency": "USDT",
+      "account_id": "btc-usdt-research",
+      "borrowing_enabled": false,
+      "fee_classification": null,
+      "fee_configured_at": null,
+      "fee_currency": "USDT",
+      "fee_source": null,
+      "leverage_enabled": false,
+      "long_only": true,
+      "maker_fee_bps": null,
+      "max_concurrent_positions": null,
+      "max_daily_loss": null,
+      "max_risk_per_trade": null,
+      "max_trades_per_utc_day": null,
+      "profile_version": "btcusdt-research-profile-v1",
+      "short_selling_enabled": false,
+      "slippage_bps": null,
+      "slippage_classification": null,
+      "slippage_source": null,
+      "spread_bps": null,
+      "spread_classification": null,
+      "spread_source": null,
+      "starting_capital": null,
+      "taker_fee_bps": null
+    },
+    "cost_model_version": "crypto-bps-cost-model-v1",
+    "cost_sensitivity_scenarios": [
+      {
+        "configuration_hash": "f210ee37b2c5d2d0b90b96dcfe5cb750c5515f03d5e1e46d4f618f465e7bf239",
+        "fee_multiplier": "1.0",
+        "maker_fee_bps": null,
+        "name": "BASE",
+        "profile_hash": "ca276ab91caad054f536d8aa1d2fd1bad31e59cce5c4d20780c73016ece59e03",
+        "slippage_bps": null,
+        "slippage_multiplier": "1.0",
+        "spread_bps": null,
+        "spread_multiplier": "1.0",
+        "taker_fee_bps": null
+      },
+      {
+        "configuration_hash": "befd39d2f19fce9ff744ec2e9c91f59d3b9e639daf5a7dd4f83d5e46b930a9da",
+        "fee_multiplier": "1.5",
+        "maker_fee_bps": null,
+        "name": "COST_1_5X",
+        "profile_hash": "ca276ab91caad054f536d8aa1d2fd1bad31e59cce5c4d20780c73016ece59e03",
+        "slippage_bps": null,
+        "slippage_multiplier": "1.5",
+        "spread_bps": null,
+        "spread_multiplier": "1.0",
+        "taker_fee_bps": null
+      },
+      {
+        "configuration_hash": "1b8eb9f0677d419e703d876143eb1e1421efc6b9a04b70ca1cfb88104a8cbe6e",
+        "fee_multiplier": "2.0",
+        "maker_fee_bps": null,
+        "name": "COST_2X",
+        "profile_hash": "ca276ab91caad054f536d8aa1d2fd1bad31e59cce5c4d20780c73016ece59e03",
+        "slippage_bps": null,
+        "slippage_multiplier": "2.0",
+        "spread_bps": null,
+        "spread_multiplier": "1.0",
+        "taker_fee_bps": null
+      }
+    ],
+    "dataset": null,
+    "filter_snapshot": {
+      "classification": "CURRENT_ONLY_NOT_JANUARY_2025_RULES",
+      "normalized": {
+        "ask_multiplier_down": "0.8",
+        "ask_multiplier_up": "2",
+        "base_asset": "BTC",
+        "base_asset_precision": 8,
+        "bid_multiplier_down": "0.5",
+        "bid_multiplier_up": "1.2",
+        "exchange_server_time_utc": "2026-11-02T17:06:39.572000+00:00",
+        "lot_max_quantity": "9000.00000000",
+        "lot_min_quantity": "0.00001000",
+        "lot_step_size": "0.00001000",
+        "market_max_quantity": "122.91494833",
+        "market_min_quantity": "0E-8",
+        "market_step_size": "0E-8",
+        "max_notional": "9000000.00000000",
+        "max_price": "1000000.00000000",
+        "min_notional": "5.00000000",
+        "min_notional_applies_to_market": true,
+        "min_price": "0.01000000",
+        "parser_version": "binance-spot-exchangeinfo-v1",
+        "percent_price_avg_minutes": 5,
+        "quote_asset": "USDT",
+        "quote_asset_precision": 8,
+        "raw_response_sha256": "f47dd9cae7c55b04273c305e3d66778a3c4afe47d0448ed4826544036bda248c",
+        "retrieved_at_utc": "2026-11-02T17:07:33.792021+00:00",
+        "source_endpoint": "https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT",
+        "spot_enabled": true,
+        "status": "TRADING",
+        "symbol": "BTCUSDT",
+        "tick_size": "0.01000000"
+      },
+      "retrieved_at_utc": "2026-11-02T17:07:33.792021+00:00",
+      "sha256": "f47dd9cae7c55b04273c305e3d66778a3c4afe47d0448ed4826544036bda248c"
+    },
+    "instrument": {
+      "allow_negative_prices": false,
+      "asset_class": "crypto_spot",
+      "base_currency": "BTC",
+      "data_source": "BINANCE_SPOT:BTCUSDT",
+      "exchange_timezone": "UTC",
+      "instrument_id": "BTCUSDT.BINANCE_SPOT",
+      "min_order_notional": "5.00000000",
+      "min_order_quantity": "0.00001000",
+      "price_precision": 8,
+      "provenance": "verified BTCUSDT current filter snapshot",
+      "quantity_increment": "0.00001000",
+      "quote_currency": "USDT",
+      "session_calendar": "24/7",
+      "symbol": "BTCUSDT",
+      "tick_size": "0.01000000",
+      "venue": "BINANCE_SPOT"
+    },
+    "nautilus_version": "1.231.0",
+    "source_sha256": {
+      "aggregation.py": "467398829783942e8fb9216f7b98f160b33a7814af00a5883f9bd19dfadc8ce9",
+      "candidates.py": "963936e1f4ed0e1c11d1ad81595fe821a09aa069060366d7690d21aa2b4b7ff8",
+      "crypto_costs.py": "f91965feaef94df6f6ae9d21d50f01dcf8b7a055cbeb99ff0a26684e1ec8be49",
+      "crypto_exchange.py": "3282e1dcbc314701471e6b243faf43a697fe1c650a2df94b87ab72fdfa46f3cf",
+      "crypto_execution.py": "3bb5b905e9102e97db7b6da25e4865483b74e0b3879c486468c2aaa4859714ea",
+      "crypto_experiment.py": "dc89903080dbfaae9ab985fe0b9e563f24566b71f6475de87f61b93f22bfd65b",
+      "crypto_nautilus.py": "95248068e6c40c9cb31602c40b7180864411dae0d69dba539b966a7b9f395838",
+      "crypto_pipeline.py": "2e957c815aa9980eee61aa3e3249708b419d47b82c1572957e6aedb5f845c2a1",
+      "crypto_readiness.py": "3a19098431e718b4fee2373f3b8d933a13aeef17e7b34addc2cabe690e10f038",
+      "crypto_research.py": "52170201ccde6cc1b91c62f9848a366518d7f0807279325f0046945d0fec6bee",
+      "crypto_research_readiness.py": "e3f8f7370b5826de5b9ff70a8b89f782a5a782a25d881fcae720a3c2cd3e8150",
+      "experiment_validation.py": "8afe68845444ec6eae4b48aa911617adf63bd3b5ae534c9dbc096b82a64b5160",
+      "indicators.py": "e068b9a520590de8da7638aea89a89f412d0abcaa045eeb60e39012bf892b349",
+      "nautilus_v1.py": "ba0f1321cfda0260a0bcc335ea33fb30ea6e5dce9b6dd76604a3c68c953f9879",
+      "strategies.py": "2fa8354c3cf276a0faa2e38d17ebf2387570e0f2f9c7b046ee4e147e10e88c98"
+    },
+    "strategy": {
+      "candle_completion": "bar_end_timestamp",
+      "price_input": "ohlcv_typical_price=(high+low+close)/3",
+      "pullback": {
+        "confirmation_interval_minutes": 15,
+        "crypto_session_anchor_utc": null,
+        "expiry_bars": 3,
+        "max_atr_percent": "0.04",
+        "max_extension_atr": "1.50",
+        "max_quote_age_minutes": 5,
+        "max_spread_bps": "15",
+        "max_vwap_penetration_atr": "0.50",
+        "min_atr_percent": "0.0005",
+        "min_relative_volume": "0.75",
+        "primary_interval_minutes": 5,
+        "pullback_lookback_bars": 3,
+        "pullback_zone_atr": "0.35",
+        "regime": {
+          "adx_trend_min": "20",
+          "dislocated_atr_percent": "0.12",
+          "dislocated_bar_return": "0.08",
+          "dislocated_relative_volume": "8",
+          "high_atr_percent": "0.04"
+        },
+        "require_quotes": false,
+        "stop_atr_multiple": "1.25",
+        "target_reward_to_risk": "2.0",
+        "version": "1.0.0"
+      },
+      "utc_anchor": "00:00:00",
+      "version": "crypto-vwap-ohlcv-1.0.0",
+      "volume_input": "binance_kline_base_volume"
+    }
   },
-  "cost_inputs_explicit": false,
-  "current_instrument_filters_status": "available",
-  "dataset": {
-    "actual_end_utc": "2025-01-31T23:59:00+00:00",
-    "actual_start_utc": "2025-01-01T00:00:00+00:00",
-    "artifact_sha256": {
-      "15m:2025-01": "93026f2c2f62f95e44228f6f2041a8d70201980a81ab41e9e8016577501df567",
-      "1m:2025-01": "32caf8ca4805b16ac17c048f26a5b0693d102de0e89a3a928ef8c60e03d2b953",
-      "5m:2025-01": "df6b3943cf0be02f7348b48c15b0e1c3c05aa33b1c8d7aab70c477ad8d8e1d95"
-    },
-    "dataset_id": "819f13eb67b47c7a01634c10",
-    "duplicate_timestamps": 0,
-    "instrument_id": "BINANCE_SPOT:BTCUSDT",
-    "invalid_records": 0,
-    "manifest_path": "/private/tmp/tradingagents-phase4b-data/market=24_7/instrument=BINANCE_SPOT_BTCUSDT/manifests/dataset=819f13eb67b47c7a01634c10.json",
-    "missing_intervals": 0,
-    "out_of_order_timestamps": 0,
-    "raw_sha256": {
-      "BTCUSDT-1m-2025-01.zip": "8d028b2f91aad57d6b693d44449c93f9c4b7044f55f298c8a3ac40ab676dafac",
-      "BTCUSDT-1m-2025-01.zip.CHECKSUM": "29daeebd9a37cf7b0ca09b66c3f738244537aaac9584d3710d36232f19a229a9"
-    },
-    "record_counts": {
-      "15m": 2976,
-      "1m": 44640,
-      "5m": 8928
-    },
-    "zero_volume_intervals": 0
-  },
-  "dataset_error": null,
-  "dataset_status": "verified",
-  "fee_configuration_explicit": false,
-  "fee_configuration_status": "COST_INCOMPLETE",
-  "fee_currency_supported_by_nautilus_projection": false,
-  "filter_error": null,
+  "dataset": null,
+  "dataset_error": "manifest is missing or invalid JSON",
+  "execution_cost_model_validated": true,
+  "experiment_configuration_hash": "2a421a1216f375534419150dcf8aadb2c4902ea19e5331ed5643fa2d3c4aef37",
   "filter_snapshot": {
-    "ask_multiplier_down": "0.8",
-    "ask_multiplier_up": "2",
-    "base_asset": "BTC",
-    "base_asset_precision": 8,
-    "bid_multiplier_down": "0.5",
-    "bid_multiplier_up": "1.2",
-    "exchange_server_time_utc": "2026-11-02T17:06:39.572000+00:00",
-    "lot_max_quantity": "9000.00000000",
-    "lot_min_quantity": "0.00001000",
-    "lot_step_size": "0.00001000",
-    "market_max_quantity": "122.91494833",
-    "market_min_quantity": "0E-8",
-    "market_step_size": "0E-8",
-    "max_notional": "9000000.00000000",
-    "max_price": "1000000.00000000",
-    "min_notional": "5.00000000",
-    "min_notional_applies_to_market": true,
-    "min_price": "0.01000000",
-    "parser_version": "binance-spot-exchangeinfo-v1",
-    "percent_price_avg_minutes": 5,
-    "quote_asset": "USDT",
-    "quote_asset_precision": 8,
-    "raw_response_sha256": "f47dd9cae7c55b04273c305e3d66778a3c4afe47d0448ed4826544036bda248c",
+    "classification": "CURRENT_ONLY_NOT_JANUARY_2025_RULES",
+    "error": null,
+    "path": "/Users/dakshlohchab/nebius/Trading_Agent/tradingagents/intraday/data/binance/BTCUSDT-exchangeInfo-normalized.json",
     "retrieved_at_utc": "2026-11-02T17:07:33.792021+00:00",
-    "source_endpoint": "https://api.binance.com/api/v3/exchangeInfo?symbol=BTCUSDT",
-    "spot_enabled": true,
-    "status": "TRADING",
-    "symbol": "BTCUSDT",
-    "tick_size": "0.01000000"
+    "sha256": "f47dd9cae7c55b04273c305e3d66778a3c4afe47d0448ed4826544036bda248c"
   },
-  "filter_snapshot_is_historical": false,
   "historical_backtest_executed": false,
-  "historical_filter_compatibility": "unverified_current_snapshot_only",
-  "ledger_reconciliation_status": "passed",
-  "nautilus_integration_status": "validated",
-  "phase4c_report_path": "not_present_in_workspace; dataset manifest was re-verified directly",
+  "historical_cost_sensitivity_executed": false,
+  "historical_performance_metrics": null,
+  "ledger_reconciliation_passed": true,
+  "nautilus_integration_validated": true,
   "ready_for_historical_backtest": false,
-  "realistic_net_performance_label_allowed": false,
-  "report_version": "crypto-backtest-readiness-v1",
-  "risk_configuration_status": "invalid_or_missing",
-  "slippage_configuration_status": "incomplete",
-  "spread_configuration_status": "incomplete"
+  "report_version": "btcusdt-research-readiness-v1",
+  "research_edge_or_live_suitability_claimed": false,
+  "status": "BLOCKED_DATA",
+  "strategy_checks": {
+    "borrowing_disabled": true,
+    "cash_account": true,
+    "cash_account_and_currency": true,
+    "completed_candle_semantics": "bar_end_timestamp",
+    "crypto_orb_disabled_by_default": true,
+    "execution_price_adjustment_configured": true,
+    "fee_model_available": true,
+    "ledger_reconciliation_passed": true,
+    "nautilus_version": "1.231.0",
+    "no_lookahead_synthetic_replay": true,
+    "risk_approval_before_submission": true,
+    "risk_precedes_order_submission": true,
+    "strategy_candidates_generated": true,
+    "strategy_id": "crypto_vwap_trend_pullback",
+    "strategy_version": "crypto-vwap-ohlcv-1.0.0",
+    "usdt_fee_currency": true,
+    "utc_vwap_reset": "00:00:00",
+    "vwap_price_input": "ohlcv_typical_price=(high+low+close)/3",
+    "vwap_volume_input": "binance_kline_base_volume"
+  },
+  "synthetic_integration_self_check": {
+    "account_currency": "USDT",
+    "account_type": "CASH",
+    "borrowing_enabled": false,
+    "candidate_count": 2,
+    "cost_adjusted_fills": true,
+    "executed": true,
+    "fee_currencies": [
+      "USDT"
+    ],
+    "fill_count": 4,
+    "fill_fee_classifications": [
+      "TAKER"
+    ],
+    "future_candidate_event_gate_passed": true,
+    "historical_performance_metrics": null,
+    "ledger_reconciliation_passed": true,
+    "reason": null,
+    "risk_approval_count": 2,
+    "risk_precedes_submission": true,
+    "status": "COMPLETE",
+    "synthetic_only": true
+  }
 }

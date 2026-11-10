@@ -38,8 +38,9 @@ state. The custom `CryptoSpotAccountLedger` is used only through
 as an independent Decimal accounting projection; it never reserves an order.
 After the run, total/free/locked USDT and BTC, fill quantities, weighted
 average fill prices, fees by currency, realized P&L, and final-mark unrealized
-P&L are reconciled. Any detected difference raises an error. Orders with fees
-in USDT are supported by this adapter; other fee currencies fail closed.
+P&L are reconciled against Nautilus's portfolio API. Any detected difference
+raises an error. Orders with fees in USDT are supported by this adapter; other
+fee currencies fail closed.
 
 The adapter's `FillModel` uses NautilusTrader 1.231.0 deterministic one-tick
 adverse slippage. Explicit spread and slippage inputs are also used by the risk
