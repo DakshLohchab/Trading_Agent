@@ -151,6 +151,7 @@ def persist_dataset(
     requested_end: date,
     raw_payloads: list[tuple[str, bytes]],
     instrument_metadata_version: str,
+    instrument_metadata: dict[str, Any] | None = None,
     source_terms_reference: str,
     data_root: str | Path | None = None,
 ) -> dict[str, Any]:
@@ -232,6 +233,7 @@ def persist_dataset(
         "expected_interval_count": quality.expected_intervals, "completeness_ratio": quality.completeness_ratio,
         "quality_report": asdict(quality), "raw_payloads": raw_artifacts,
         "artifacts": artifacts, "instrument_metadata_version": instrument_metadata_version,
+        "instrument_metadata": instrument_metadata,
         "calendar_provider_version": SessionCalendar(instrument.session_calendar).provenance,
         "transformation_version": TRANSFORMATION_VERSION,
         "source_terms_reference": source_terms_reference,

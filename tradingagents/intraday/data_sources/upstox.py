@@ -6,6 +6,7 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -142,7 +143,17 @@ class UpstoxHistoricalClient:
             raise ValueError("symbol cannot be blank")
         retrieved_at = datetime.now(UTC).isoformat()
         if cache_path and Path(cache_path).exists():
-            compressed = Path(cache_path).read_bytes()
+            path = Path(cache_path)
+            compressed = path.read_bytes()
+            timestamp_path = path.with_name(path.name + ".metadata.json")
+            try:
+                cached_metadata = json.loads(timestamp_path.read_text(encoding="utf-8"))
+                if cached_metadata.get("sha256") == hashlib.sha256(compressed).hexdigest():
+                    retrieved_at = cached_metadata["retrieved_at_utc"]
+                else:
+                    retrieved_at = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
+            except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
+                retrieved_at = datetime.fromtimestamp(path.stat().st_mtime, UTC).isoformat()
         else:
             self.rate_limiter.wait()
             response = self.session.get(NSE_MASTER_URL, timeout=60)
@@ -153,6 +164,12 @@ class UpstoxHistoricalClient:
                 path = Path(cache_path)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 _atomic_write(path, compressed)
+                _atomic_write(
+                    path.with_name(path.name + ".metadata.json"),
+                    (json.dumps({"retrieved_at_utc": retrieved_at,
+                                 "sha256": hashlib.sha256(compressed).hexdigest()},
+                                sort_keys=True) + "\n").encode(),
+                )
         checksum = hashlib.sha256(compressed).hexdigest()
         try:
             content = gzip.decompress(compressed) if compressed[:2] == b"\x1f\x8b" else compressed
@@ -174,10 +191,13 @@ class UpstoxHistoricalClient:
         key = row.get("instrument_key")
         if not isinstance(key, str) or not key.startswith("NSE_EQ|"):
             raise ProviderError("instrument master entry has no valid NSE_EQ instrument_key")
+        isin = row.get("isin")
+        if not isinstance(isin, str) or not re.fullmatch(r"[A-Z]{2}[A-Z0-9]{10}", isin):
+            raise ProviderError("instrument master entry has no valid ISIN")
         return ResolvedInstrument(
             trading_symbol=row["trading_symbol"],
             instrument_key=key,
-            isin=row.get("isin"),
+            isin=isin,
             tick_size_raw=str(row["tick_size"]) if row.get("tick_size") is not None else None,
             lot_size=str(row["lot_size"]) if row.get("lot_size") is not None else None,
             instrument_type=row["instrument_type"],
@@ -240,7 +260,8 @@ class UpstoxHistoricalClient:
                 bar = MarketBar(
                     timestamp=stamp, instrument_id=instrument_key,
                     open=row[1], high=row[2], low=row[3], close=row[4], volume=row[5],
-                    source_id="upstox:v3", source_timestamp=raw_stamp, base_interval_minutes=1,
+                    source_id="upstox:v3", source_timestamp=raw_stamp,
+                    base_interval_minutes=1, exchange_local_timestamp=raw_stamp,
                 )
             except (ValueError, TypeError, IndexError) as exc:
                 raise ProviderError(f"Upstox candle row {index} failed validation: {type(exc).__name__}") from None

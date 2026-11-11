@@ -117,6 +117,7 @@ def test_upstox_parses_bars_and_chunks_by_month_without_printing_auth():
     )
     bars, _ = client.fetch_month("NSE_EQ|INE002A01018", "2024-01-01", "2024-01-31")
     assert len(bars) == 1 and bars[0].close == Decimal("101")
+    assert bars[0].exchange_local_timestamp == "2024-01-02T03:45:00+00:00"
     url, kwargs = session.calls[0]
     assert "%7C" in url
     assert kwargs["headers"]["Authorization"] == "Bearer secret-test-token"
