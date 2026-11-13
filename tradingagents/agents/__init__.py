@@ -1,3 +1,9 @@
+from .analysts import (
+    AnalystType,
+    AssetType,
+    detect_asset_type,
+    filter_analysts_for_asset_type,
+)
 from .analysts.fundamentals_analyst import create_fundamentals_analyst
 from .analysts.market_analyst import create_market_analyst
 from .analysts.news_analyst import create_news_analyst
@@ -14,6 +20,8 @@ from .trader.trader import create_trader
 
 __all__ = [
     "AgentState",
+    "AnalystType",
+    "AssetType",
     "InvestDebateState",
     "RiskDebateState",
     "create_bear_researcher",
@@ -28,4 +36,6 @@ __all__ = [
     "create_conservative_debator",
     "create_sentiment_analyst",
     "create_trader",
+    "detect_asset_type",
+    "filter_analysts_for_asset_type",
 ]

@@ -249,35 +249,3 @@ def test_partial_portfolio_states_only_what_it_was_given():
     assert "Cash" not in text
     assert "5" in text
 
-
-@pytest.mark.unit
-def test_cli_rejects_an_unusable_portfolio_file_before_running(tmp_path, monkeypatch):
-    from typer.testing import CliRunner
-
-    import cli.main as m
-
-    bad = tmp_path / "bad.json"
-    bad.write_text('{"positions": [{"quantity": 5}]}')
-    ran = []
-    monkeypatch.setattr(m, "run_analysis", lambda **k: ran.append(k))
-
-    result = CliRunner().invoke(m.app, ["--portfolio", str(bad)])
-
-    assert result.exit_code == 1 and ran == []
-
-
-@pytest.mark.unit
-def test_cli_passes_a_valid_portfolio_into_the_run(tmp_path, monkeypatch):
-    from typer.testing import CliRunner
-
-    import cli.main as m
-
-    good = tmp_path / "good.json"
-    good.write_text(json.dumps(HOLDING))
-    ran = []
-    monkeypatch.setattr(m, "run_analysis", lambda **k: ran.append(k))
-
-    result = CliRunner().invoke(m.app, ["--portfolio", str(good)])
-
-    assert result.exit_code == 0
-    assert ran[0]["portfolio"].position_in("AAPL").quantity == 120

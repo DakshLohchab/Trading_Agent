@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 
-import cli.run as cli_run
 from tradingagents.agents.rating import RATING_REVIEW, extract_rating, parse_rating
 
 INVERTED = ("The aggressive analyst pushed hard for a Buy on the AI backlog, but the "
@@ -108,66 +107,6 @@ def test_an_unscored_decision_is_left_out_of_the_backtest_figures(tmp_path):
 
     summary = summarize(tmp_path / "m.md")
     assert set(summary.by_rating) == {"Buy"}
-
-
-@pytest.mark.unit
-def test_the_cli_says_when_a_run_produced_no_usable_rating(monkeypatch, tmp_path, capsys):
-    """The CLI is the primary entry point; an unreadable decision must be
-    visible there, not only in the log."""
-    import cli.main as m
-    from cli.models import AnalystType
-
-    printed = []
-
-    class _Graph:
-        graph = propagator = None
-
-        def create_run_state(self, *a, **k):
-            return {"messages": []}
-
-        def record_decision(self, *a, **k):
-            pass
-
-        def get_graph_args(self, callbacks=None):
-            return {}
-
-        def begin_checkpoint(self, *a, **k):
-            return None
-
-        def checkpoint_input(self, state):
-            return state
-
-        def clear_checkpoint_on_success(self, *a, **k):
-            pass
-
-        def end_checkpoint(self):
-            pass
-
-        def stream_run(self, *a, **k):
-            yield [], {"messages": [], "final_trade_decision": REFUSAL, "final_rating": RATING_REVIEW}
-
-    fake = _Graph()
-    fake.graph = fake
-    fake.propagator = fake
-    monkeypatch.setattr(cli_run, "TradingAgentsGraph", lambda *a, **k: fake)
-    monkeypatch.setattr(cli_run, "create_layout", lambda: None)
-    monkeypatch.setattr(cli_run, "update_display", lambda *a, **k: None)
-    monkeypatch.setattr(cli_run, "Live", type("L", (), {"__init__": lambda s, *a, **k: None,
-                                                  "__enter__": lambda s: s,
-                                                  "__exit__": lambda s, *a: False}))
-    monkeypatch.setattr(m.console, "print", lambda *a, **k: printed.append(" ".join(str(x) for x in a)))
-    monkeypatch.setattr(cli_run, "display_complete_report", lambda *a, **k: None)
-    monkeypatch.setattr(m.typer, "prompt", lambda *a, **k: "N")
-    monkeypatch.setattr(cli_run, "get_user_selections", lambda flags=None: {
-        "ticker": "NVDA", "analysis_date": "2026-01-10",
-        "analysts": [AnalystType.MARKET], "asset_type": "stock",
-    })
-    monkeypatch.setattr(cli_run, "_build_run_config", lambda s, c: {
-        "data_cache_dir": str(tmp_path / "c"), "results_dir": str(tmp_path / "r")})
-
-    cli_run.run_analysis()
-
-    assert any("review" in line.lower() for line in printed), printed[-5:]
 
 
 @pytest.mark.unit

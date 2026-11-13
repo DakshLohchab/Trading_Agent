@@ -1,4 +1,5 @@
 
+import os
 from typing import Any
 
 from .base_client import BaseLLMClient
@@ -154,3 +155,33 @@ def create_tier_client(config: dict, tier: str, **extra) -> BaseLLMClient:
     kwargs = build_llm_kwargs({**config, "llm_provider": provider})
     return create_llm_client(provider=provider, model=config[f"{tier}_think_llm"], base_url=base_url,
                              **kwargs, **extra)
+
+
+DEFAULT_OLLAMA_URL = os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
+
+DEFAULT_PROVIDER_URLS: dict[str, str] = {
+    "openai": "https://api.openai.com/v1",
+    "xai": "https://api.x.ai/v1",
+    "deepseek": "https://api.deepseek.com",
+    "qwen": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    "qwen-cn": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "glm": "https://open.bigmodel.cn/api/paas/v4",
+    "glm-cn": "https://open.bigmodel.cn/api/paas/v4",
+    "minimax": "https://api.minimax.chat/v1",
+    "minimax-cn": "https://api.minimaxi.com/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "ollama": DEFAULT_OLLAMA_URL,
+}
+
+
+def provider_default_url(provider_key: str) -> str | None:
+    """Return the default backend URL for a provider key, or None if unknown."""
+    return DEFAULT_PROVIDER_URLS.get(provider_key.lower())
+
+
+def resolve_backend_url(
+    provider: str, menu_url: str | None = None, env_url: str | None = None
+) -> str | None:
+    """Resolve backend URL with proper precedence (env override > explicitly provided > provider default)."""
+    return env_url or menu_url or provider_default_url(provider)
+

@@ -178,3 +178,7 @@ def safe_ticker_component(value: str, *, max_len: int = 32) -> str:
     if set(value) == {"."}:
         raise ValueError(f"ticker cannot consist solely of dots: {value!r}")
     return value
+
+
+# Canonical alias for ticker normalization
+normalize_ticker_symbol = normalize_symbol

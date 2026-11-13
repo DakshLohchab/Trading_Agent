@@ -1,7 +1,11 @@
 import unittest
 
-from cli.models import AnalystType, AssetType
-from cli.prompts import detect_asset_type, filter_analysts_for_asset_type
+from tradingagents import (
+    AnalystType,
+    AssetType,
+    detect_asset_type,
+    filter_analysts_for_asset_type,
+)
 from tradingagents.graph.propagation import Propagator
 
 

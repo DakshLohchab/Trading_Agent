@@ -77,17 +77,10 @@ def _no_network(request, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _at_a_terminal(monkeypatch):
-    """Tests of the interactive steps run as if at a terminal; pytest's stdin is
-    not one. A test of an unattended run sets isatty to False itself."""
+    """Tests of interactive steps run as if at a terminal."""
     import sys
 
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-
-
-@pytest.fixture(autouse=True)
-def _own_cli_prefs(tmp_path, monkeypatch):
-    """The CLI keeps the last run's selections in the user's home; tests keep theirs apart."""
-    monkeypatch.setattr("cli.prefs._PREFS_PATH", tmp_path / "cli_prefs.json")
 
 
 _API_KEY_ENV_VARS = (

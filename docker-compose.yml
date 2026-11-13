@@ -5,8 +5,6 @@ services:
       - .env
     volumes:
       - ${TRADINGAGENTS_DATA_DIR:-tradingagents_data}:/home/appuser/.tradingagents
-    tty: true
-    stdin_open: true
 
   ollama:
     image: ollama/ollama:latest
@@ -26,8 +24,6 @@ services:
       - ${TRADINGAGENTS_DATA_DIR:-tradingagents_data}:/home/appuser/.tradingagents
     depends_on:
       - ollama
-    tty: true
-    stdin_open: true
     profiles:
       - ollama
 
