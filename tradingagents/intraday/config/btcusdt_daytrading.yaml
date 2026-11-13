@@ -1,0 +1,28 @@
+schema_version: btcusdt-research-v1
+account:
+  account_id: btc-usdt-daytrading
+  account_currency: USDT
+  starting_capital: "10000.0"
+  max_risk_per_trade: "100.0"
+  max_daily_loss: "300.0"
+  max_concurrent_positions: 1
+  max_trades_per_utc_day: 5
+  long_only: true
+  leverage_enabled: false
+  borrowing_enabled: false
+  short_selling_enabled: false
+fees:
+  maker_fee_bps: "7.5"
+  taker_fee_bps: "7.5"
+  fee_currency: USDT
+  source: binance-spot-vip0-bnb
+  configured_at: "2026-11-01T00:00:00+00:00"
+  classification: RESEARCH_ASSUMPTION
+spread:
+  full_bid_ask_bps: "1.0"
+  source: binance-spot-top-of-book
+  classification: RESEARCH_ASSUMPTION
+slippage:
+  additional_adverse_bps: "1.0"
+  source: binance-spot-execution-estimate
+  classification: RESEARCH_ASSUMPTION

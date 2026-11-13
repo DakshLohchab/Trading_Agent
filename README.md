@@ -141,17 +141,37 @@ final_state, decision = agent.propagate(
 print("Trade Decision:", decision)
 ```
 
-### Crypto & Intraday Research
+### Crypto Day Trading (Live & Paper)
+
+Run the autonomous Crypto Day Trading engine on Binance Spot (default: `BTCUSDT`):
+
+```bash
+# 1. Instant real-time scan of BTCUSDT VWAP, EMAs, 15m trend, and pullback setups
+python crypto_trader.py --scan
+
+# 2. Start continuous Paper Day Trading on live market data (simulated fills)
+python crypto_trader.py --paper
+
+# 3. Start Live Day Trading on Binance (requires BINANCE_API_KEY & BINANCE_API_SECRET in .env)
+python crypto_trader.py --live --risk 50
+```
+
+Programmatic Python usage:
 
 ```python
-from tradingagents import detect_asset_type
+from tradingagents import CryptoDayTrader
 
-# Automatically detects crypto vs. equities
-symbol = "BTC-USDT"
-asset_type = detect_asset_type(symbol)  # AssetType.CRYPTO
+# Initialize paper or live trader
+trader = CryptoDayTrader(symbol="BTCUSDT", mode="paper")
 
-agent = TradingAgentsGraph()
-final_state, decision = agent.propagate(symbol, "2026-10-01", asset_type=asset_type)
+# Instant market scan
+status = trader.scan()
+print("Current Price:", status["current_price"])
+print("00:00 UTC VWAP:", status["vwap"])
+print("Setup Status:", status["setup_status"])
+
+# Run live monitoring and execution loop
+# trader.run_live_loop(poll_interval_seconds=15)
 ```
 
 ---
